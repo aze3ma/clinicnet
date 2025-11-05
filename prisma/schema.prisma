@@ -1,0 +1,214 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Appointment {
+  id         String            @id @default(cuid())
+  patientId  String
+  providerId String
+  branchId   String
+  clinicId   String
+  startTime  DateTime
+  endTime    DateTime
+  status     AppointmentStatus @default(SCHEDULED)
+  notes      String?
+  source     String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  patient    Patient           @relation(fields: [patientId], references: [id])
+  provider   Provider          @relation(fields: [providerId], references: [id])
+  branch     Branch            @relation(fields: [branchId], references: [id])
+
+  @@index([patientId])
+  @@index([providerId])
+  @@index([branchId])
+  @@index([clinicId])
+  @@index([startTime])
+  @@index([status])
+}
+
+model Clinic {
+  id               String     @id @default(cuid())
+  name             String
+  subdomain        String     @unique
+  email            String?
+  phone            String?
+  address          String?
+  timezone         String?
+  branding         Json?
+  settings         Json?
+  subscriptionPlan String     @default("free")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  branches         Branch[]
+  users            User[]
+  patients         Patient[]
+  providers        Provider[]
+
+  @@index([subdomain])
+}
+
+model Branch {
+  id           String                @id @default(cuid())
+  clinicId     String
+  name         String
+  address      String?
+  phone        String?
+  isMain       Boolean               @default(false)
+  isOpen       Boolean               @default(true)
+  timezone     String                @default("UTC")
+  openingHours Json?
+  settings     Json?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  clinic       Clinic                @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  providers    Provider[]
+  appointments Appointment[]
+
+  @@index([clinicId])
+  @@index([clinicId, isOpen])
+}
+
+model Invoice {
+  id            String    @id
+  appointmentId String?
+  clinicId      String?
+  total         Int
+  currency      String    @default("EGP")
+  discount      Int       @default(0)
+  net           Int
+  status        String    @default("PENDING")
+  createdAt     DateTime  @default(now())
+  Payment       Payment[]
+}
+
+model OtpCode {
+  id        String   @id
+  phone     String
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Patient {
+  id           String        @id @default(cuid())
+  clinicId     String
+  phone        String
+  email        String?
+  firstName    String?
+  lastName     String?
+  dateOfBirth  DateTime?
+  gender       Gender?
+  address      String?
+  notes        String?
+  userId       String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id])
+  appointments Appointment[]
+
+  @@unique([clinicId, phone])
+  @@index([clinicId])
+  @@index([clinicId, phone])
+}
+
+model Payment {
+  id        String   @id
+  invoiceId String
+  amount    Int
+  channel   String
+  pspRef    String?
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  Invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+model Provider {
+  id                   String                 @id @default(cuid())
+  userId               String                 @unique
+  branchId             String
+  specialty            String
+  bio                  String?
+  consultationFee      Int
+  currency             String                 @default("EGP")
+  slotDuration         Int                    @default(30)
+  isAcceptingPatients  Boolean                @default(true)
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch               Branch                 @relation(fields: [branchId], references: [id])
+  clinic               Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments         Appointment[]
+  availability         ProviderAvailability[]
+  clinicId             String
+
+  @@index([branchId])
+  @@index([userId])
+}
+
+model User {
+  id           String    @id @default(cuid())
+  clinicId     String
+  email        String?
+  passwordHash String?
+  firstName    String?
+  lastName     String?
+  phone        String?
+  role         Role      @default(PATIENT)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  clinic       Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  patient      Patient?
+  provider     Provider?
+
+  @@unique([clinicId, email])
+  @@unique([clinicId, phone])
+  @@index([clinicId])
+  @@index([clinicId, role])
+}
+
+model ProviderAvailability {
+  id         String   @id @default(cuid())
+  providerId String
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([providerId, dayOfWeek])
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  CANCELLED
+  RESCHEDULED
+  NO_SHOW
+  COMPLETED
+}
+
+enum Role {
+  PATIENT
+  ADMIN
+  DOCTOR
+  RECEPTION
+  ACCOUNTANT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
