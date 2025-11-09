@@ -1,5 +1,8 @@
+// This is your Prisma schema file
+
 generator client {
   provider = "prisma-client-js"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -7,187 +10,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Appointment {
-  id         String            @id @default(cuid())
-  patientId  String
-  providerId String
-  branchId   String
-  clinicId   String
-  startTime  DateTime
-  endTime    DateTime
-  status     AppointmentStatus @default(SCHEDULED)
-  notes      String?
-  source     String?
-  createdAt  DateTime          @default(now())
-  updatedAt  DateTime          @updatedAt
-  patient    Patient           @relation(fields: [patientId], references: [id])
-  provider   Provider          @relation(fields: [providerId], references: [id])
-  branch     Branch            @relation(fields: [branchId], references: [id])
-
-  @@index([patientId])
-  @@index([providerId])
-  @@index([branchId])
-  @@index([clinicId])
-  @@index([startTime])
-  @@index([status])
-}
-
-model Clinic {
-  id               String     @id @default(cuid())
-  name             String
-  subdomain        String     @unique
-  email            String?
-  phone            String?
-  address          String?
-  timezone         String?
-  branding         Json?
-  settings         Json?
-  subscriptionPlan String     @default("free")
-  createdAt        DateTime   @default(now())
-  updatedAt        DateTime   @updatedAt
-  branches         Branch[]
-  users            User[]
-  patients         Patient[]
-  providers        Provider[]
-
-  @@index([subdomain])
-}
-
-model Branch {
-  id           String                @id @default(cuid())
-  clinicId     String
-  name         String
-  address      String?
-  phone        String?
-  isMain       Boolean               @default(false)
-  isOpen       Boolean               @default(true)
-  timezone     String                @default("UTC")
-  openingHours Json?
-  settings     Json?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-  clinic       Clinic                @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  providers    Provider[]
-  appointments Appointment[]
-
-  @@index([clinicId])
-  @@index([clinicId, isOpen])
-}
-
-model Invoice {
-  id            String    @id
-  appointmentId String?
-  clinicId      String?
-  total         Int
-  currency      String    @default("EGP")
-  discount      Int       @default(0)
-  net           Int
-  status        String    @default("PENDING")
-  createdAt     DateTime  @default(now())
-  Payment       Payment[]
-}
-
-model OtpCode {
-  id        String   @id
-  phone     String
-  code      String
-  expiresAt DateTime
-  attempts  Int      @default(0)
-  createdAt DateTime @default(now())
-}
-
-model Patient {
-  id           String        @id @default(cuid())
-  clinicId     String
-  phone        String
-  email        String?
-  firstName    String?
-  lastName     String?
-  dateOfBirth  DateTime?
-  gender       Gender?
-  address      String?
-  notes        String?
-  userId       String?       @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  user         User?         @relation(fields: [userId], references: [id])
-  appointments Appointment[]
-
-  @@unique([clinicId, phone])
-  @@index([clinicId])
-  @@index([clinicId, phone])
-}
-
-model Payment {
-  id        String   @id
-  invoiceId String
-  amount    Int
-  channel   String
-  pspRef    String?
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  Invoice   Invoice  @relation(fields: [invoiceId], references: [id])
-}
-
-model Provider {
-  id                   String                 @id @default(cuid())
-  userId               String                 @unique
-  branchId             String
-  specialty            String
-  bio                  String?
-  consultationFee      Int
-  currency             String                 @default("EGP")
-  slotDuration         Int                    @default(30)
-  isAcceptingPatients  Boolean                @default(true)
-  createdAt            DateTime               @default(now())
-  updatedAt            DateTime               @updatedAt
-  user                 User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  branch               Branch                 @relation(fields: [branchId], references: [id])
-  clinic               Clinic                 @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  appointments         Appointment[]
-  availability         ProviderAvailability[]
-  clinicId             String
-
-  @@index([branchId])
-  @@index([userId])
-}
-
-model User {
-  id           String    @id @default(cuid())
-  clinicId     String
-  email        String?
-  passwordHash String?
-  firstName    String?
-  lastName     String?
-  phone        String?
-  role         Role      @default(PATIENT)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  clinic       Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
-  patient      Patient?
-  provider     Provider?
-
-  @@unique([clinicId, email])
-  @@unique([clinicId, phone])
-  @@index([clinicId])
-  @@index([clinicId, role])
-}
-
-model ProviderAvailability {
-  id         String   @id @default(cuid())
-  providerId String
-  dayOfWeek  Int
-  startTime  String
-  endTime    String
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  provider   Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
-
-  @@index([providerId])
-  @@index([providerId, dayOfWeek])
+enum UserRole {
+  ADMIN // Full access to clinic
+  DOCTOR // Can manage own appointments
+  RECEPTION // Can manage all appointments
+  PATIENT // Can book/view own appointments
 }
 
 enum AppointmentStatus {
@@ -195,20 +22,313 @@ enum AppointmentStatus {
   CONFIRMED
   CANCELLED
   RESCHEDULED
-  NO_SHOW
   COMPLETED
+  NO_SHOW
 }
 
-enum Role {
-  PATIENT
-  ADMIN
-  DOCTOR
-  RECEPTION
-  ACCOUNTANT
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
 }
 
 enum Gender {
   MALE
   FEMALE
   OTHER
+}
+
+// ============================================
+// APPOINTMENT
+// ============================================
+
+model Appointment {
+  id         String @id @default(cuid())
+  clinicId   String
+  branchId   String
+  providerId String
+  patientId  String
+
+  // Scheduling
+  startTime DateTime
+  endTime   DateTime
+  duration  Int // minutes
+
+  // Status
+  status AppointmentStatus @default(SCHEDULED)
+
+  // Details
+  reason       String?
+  notes        String? // Staff notes
+  patientNotes String? // Patient notes
+
+  // Cancellation
+  cancelledAt  DateTime?
+  cancelReason String?
+  cancelledBy  String? // userId or patientId
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clinic   Clinic   @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  branch   Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  patient  Patient  @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  invoice  Invoice?
+
+  @@index([clinicId])
+  @@index([branchId])
+  @@index([providerId])
+  @@index([patientId])
+  @@index([providerId, startTime])
+  @@index([status])
+  @@index([startTime])
+}
+
+// ============================================
+// CORE TENANT MODEL
+// ============================================
+
+model Clinic {
+  id        String  @id @default(cuid())
+  name      String
+  subdomain String? @unique // e.g., "dr-ahmed" → dr-ahmed.clinicnet.com
+  email     String?
+  phone     String?
+
+  // Branding (JSON for flexibility)
+  branding Json? // { logo, primaryColor, secondaryColor, font }
+  settings Json? // { currency, timezone, language }
+
+  // Subscription
+  subscriptionPlan   String    @default("free") // free, basic, pro
+  subscriptionEndsAt DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  branches     Branch[]
+  users        User[]
+  patients     Patient[]
+  appointments Appointment[]
+  invoices     Invoice[]
+
+  @@index([subdomain])
+}
+
+// ============================================
+// BRANCH (Physical Location)
+// ============================================
+
+model Branch {
+  id       String @id @default(cuid())
+  clinicId String
+
+  name    String
+  address String?
+  phone   String?
+  email   String?
+
+  // Location
+  latitude  Float?
+  longitude Float?
+
+  // Status
+  isMain Boolean @default(false)
+  isOpen Boolean @default(true) // Manual override
+
+  // Opening hours (JSON)
+  openingHours Json? // { "mon": [{"from":"09:00","to":"17:00"}], ... }
+  timezone     String @default("Africa/Cairo")
+
+  // Settings (can override clinic branding)
+  settings Json?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  providers    Provider[]
+  appointments Appointment[]
+
+  @@index([clinicId])
+  @@index([clinicId, isOpen])
+}
+
+// ============================================
+// INVOICE & PAYMENT
+// ============================================
+
+model Invoice {
+  id            String @id @default(cuid())
+  clinicId      String
+  appointmentId String @unique
+
+  amount   Decimal @db.Decimal(10, 2)
+  currency String  @default("EGP")
+
+  paymentStatus PaymentStatus @default(PENDING)
+  paymentMethod String? // "card", "cash", "insurance"
+  paidAt        DateTime?
+
+  // PSP details
+  pspTransactionId String?
+  pspResponse      Json?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clinic      Clinic      @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@index([clinicId])
+  @@index([paymentStatus])
+}
+
+// ============================================
+// OTP VERIFICATION (For phone-based auth)
+// ============================================
+
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([phone, code])
+}
+
+// ============================================
+// PATIENT
+// ============================================
+
+model Patient {
+  id       String @id @default(cuid())
+  clinicId String
+
+  phone String // Primary identifier (phone-first)
+  email String?
+
+  firstName   String
+  lastName    String
+  dateOfBirth DateTime?
+  gender      Gender?
+
+  // Medical
+  bloodType      String?
+  allergies      String?
+  medicalHistory Json?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  clinic       Clinic        @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@unique([clinicId, phone]) // Phone unique per clinic
+  @@index([clinicId])
+  @@index([phone])
+}
+
+// ============================================
+// PROVIDER (Doctor)
+// ============================================
+
+model Provider {
+  id       String @id @default(cuid())
+  userId   String @unique
+  branchId String
+
+  specialty String // e.g., "Dermatology", "Pediatrics"
+  bio       String?
+
+  // Pricing
+  consultationFee Decimal @db.Decimal(10, 2)
+  currency        String  @default("EGP")
+
+  // Availability
+  isAcceptingPatients Boolean @default(true)
+  slotDuration        Int     @default(30) // minutes
+
+  // Settings
+  settings Json? // { bufferTime, autoConfirm, etc. }
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user           User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  branch         Branch                 @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  appointments   Appointment[]
+  availabilities ProviderAvailability[]
+
+  @@index([branchId])
+  @@index([branchId, isAcceptingPatients])
+}
+
+// ============================================
+// USER (Staff: Admins, Doctors, Reception)
+// ============================================
+
+model User {
+  id       String @id @default(cuid())
+  clinicId String
+
+  email        String @unique
+  passwordHash String
+
+  firstName String
+  lastName  String
+  phone     String?
+
+  role     UserRole
+  isActive Boolean  @default(true)
+
+  // Timestamps
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLoginAt DateTime?
+
+  // Relations
+  clinic   Clinic    @relation(fields: [clinicId], references: [id], onDelete: Cascade)
+  provider Provider? // One-to-one if user is a doctor
+
+  @@index([clinicId])
+  @@index([email])
+}
+
+// ============================================
+// PROVIDER AVAILABILITY
+// ============================================
+
+model ProviderAvailability {
+  id         String @id @default(cuid())
+  providerId String
+
+  dayOfWeek Int // 0=Sunday, 6=Saturday
+  startTime String // "09:00"
+  endTime   String // "17:00"
+
+  isActive Boolean @default(true)
+
+  // Relations
+  provider Provider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+
+  @@index([providerId])
+  @@index([providerId, dayOfWeek])
 }
