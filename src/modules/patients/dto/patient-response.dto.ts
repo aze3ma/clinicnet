@@ -1,12 +1,15 @@
-import { Gender } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 
-export class PatientResponseDto {
-  id: string;
-  phone: string;
-  email: string | null;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: Date | null;
-  gender: Gender | null;
-  createdAt: Date;
-}
+// Use Prisma's utility type to auto-generate from select
+export type PatientResponseDto = Prisma.PatientGetPayload<{
+  select: {
+    id: true;
+    phone: true;
+    email: true;
+    firstName: true;
+    lastName: true;
+    dateOfBirth: true;
+    gender: true;
+    createdAt: true;
+  };
+}>;

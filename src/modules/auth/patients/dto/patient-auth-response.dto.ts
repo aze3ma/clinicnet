@@ -1,11 +1,18 @@
-export class PatientAuthResponseDto {
+import { Prisma } from '@prisma/client';
+
+// Use Prisma's utility type for the patient part
+type PatientBasic = Prisma.PatientGetPayload<{
+  select: {
+    id: true;
+    phone: true;
+    firstName: true;
+    lastName: true;
+  };
+}>;
+
+export interface PatientAuthResponseDto {
   accessToken: string;
   refreshToken: string;
-  patient: {
-    id: string;
-    phone: string;
-    firstName: string | null;
-    lastName: string | null;
-  };
+  patient: PatientBasic;
   isNewPatient: boolean;
 }
