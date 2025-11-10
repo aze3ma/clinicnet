@@ -15,8 +15,15 @@ async function bootstrap() {
 
   // Security
   app.use(helmet()); // Security headers
+
+  // CORS - handle comma-separated origins from environment
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const allowedOrigins = corsOrigin.includes(',')
+    ? corsOrigin.split(',').map(origin => origin.trim())
+    : corsOrigin;
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3001',
+    origin: allowedOrigins,
     credentials: true,
   });
 
