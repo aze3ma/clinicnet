@@ -2,7 +2,7 @@
 # Generated for NestJS application
 # See https://fly.io/docs/reference/configuration/ for information
 
-app = "clinicnet-api"  # Change this to your preferred app name (must be unique)
+app = "clinicnet"  # Change this to your preferred app name (must be unique)
 primary_region = "sjc" # San Jose, CA - change to: iad (Virginia), fra (Frankfurt), etc.
 
 [build]
@@ -13,6 +13,9 @@ primary_region = "sjc" # San Jose, CA - change to: iad (Virginia), fra (Frankfur
 [env]
   NODE_ENV = "production"
   PORT = "4000"
+  LOG_LEVEL = "info"
+  JWT_EXPIRES_IN = "7d"
+  JWT_REFRESH_EXPIRES_IN = "30d"
 
 [http_service]
   internal_port = 4000

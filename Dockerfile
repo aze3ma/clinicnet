@@ -8,16 +8,18 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
 
 # Install dependencies (including dev dependencies for build)
 RUN npm ci
 
-# Copy source code
-COPY . .
+# Copy prisma schema
+COPY prisma ./prisma/
 
-# Generate Prisma Client
+# Generate Prisma Client BEFORE copying source code
 RUN npx prisma generate
+
+# Copy source code (after Prisma is generated)
+COPY . .
 
 # Build application
 RUN npm run build
@@ -39,9 +41,11 @@ COPY prisma ./prisma/
 RUN npm ci --only=production && \
     npm cache clean --force
 
+# Generate Prisma Client in production stage
+RUN npx prisma generate
+
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
