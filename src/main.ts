@@ -19,7 +19,7 @@ async function bootstrap() {
   // CORS - handle comma-separated origins from environment
   const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
   const allowedOrigins = corsOrigin.includes(',')
-    ? corsOrigin.split(',').map(origin => origin.trim())
+    ? corsOrigin.split(',').map((origin) => origin.trim())
     : corsOrigin;
 
   app.enableCors({

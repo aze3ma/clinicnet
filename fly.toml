@@ -1,0 +1,47 @@
+# fly.toml app configuration file for clinicnet-api
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = "clinicnet-api"  # Change this to your preferred app name
+primary_region = "sjc" # San Jose, CA - change to your preferred region
+
+# Build configuration - uses existing Dockerfile
+[build]
+dockerfile = "Dockerfile"
+ignorefile = ".dockerignore"
+
+# Release command - runs migrations before each deployment
+[deploy]
+release_command = "npx prisma migrate deploy"
+
+# HTTP service configuration
+[http_service]
+internal_port = 4000
+force_https = true
+auto_stop_machines = "stop"
+auto_start_machines = true
+min_machines_running = 0    # Free tier: scale to zero when idle
+processes = ["app"]
+
+# Health check configuration
+[[http_service.checks]]
+grace_period = "10s"
+interval = "30s"
+method = "GET"
+timeout = "5s"
+path = "/api/v1/health"
+
+# Environment variables (non-sensitive)
+[env]
+NODE_ENV = "production"
+PORT = "4000"
+LOG_LEVEL = "info"
+# CORS_ORIGIN set via secrets: flyctl secrets set CORS_ORIGIN="http://localhost:3000,http://localhost:5173"
+# DATABASE_URL set automatically by Fly Postgres
+# REDIS_URL set automatically by Upstash Redis (if added)
+
+# Free tier VM configuration: 256MB RAM (1 shared-cpu-1x)
+[[vm]]
+cpu_kind = "shared"
+cpus = 1
+memory_mb = 256
